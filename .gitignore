@@ -2,3 +2,4 @@
 Medicare Physician & Other Practitioners - by Provider and Service/
 data/medicare.csv
 data/
+scripts/__pycache__/
