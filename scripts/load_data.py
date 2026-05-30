@@ -8,9 +8,34 @@ cursor = conn.cursor()
 
 # Clear old data if it exists already
 cursor.execute("DROP TABLE IF EXISTS medicare_payments")
+cursor.execute("DROP TABLE IF EXISTS va_facilities")
 conn.commit()
 
-# Create table
+# Create VA facilities table
+cursor.execute("""
+CREATE TABLE va_facilities (
+    facility_name TEXT,
+    state TEXT
+)
+""")
+
+va_data = [
+    ('VA Palo Alto - Menlo Park', 'CA'),
+    ('VA Palo Alto Health Care System', 'CA'),
+    ('VA White River Junction', 'VT'),
+    ('VA Western NY Healthcare System', 'NY'),
+    ('VA North Texas', 'TX'),
+    ('VA Puget Sound', 'WA'),
+    ('VA Eastern Colorado', 'CO'),
+    ('VA Boston Healthcare System', 'MA'),
+]
+
+cursor.executemany("""
+    INSERT INTO va_facilities VALUES (?, ?)
+""", va_data)
+conn.commit()
+
+# Create medicare table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS medicare_payments (
     npi TEXT,
@@ -27,7 +52,7 @@ conn.commit()
 # Mapping to change original column names
 column_map = {
     'Rndrng_NPI': 'npi',
-    'Rndrng_Prvdr_Ent_Cd': 'provider_type',
+    'Rndrng_Prvdr_Type': 'provider_type',
     'Rndrng_Prvdr_State_Abrvtn': 'provider_state',
     'HCPCS_Cd': 'hcpcs_code',
     'HCPCS_Desc': 'hcpcs_description',
@@ -46,6 +71,7 @@ for chunk in pd.read_csv("data/medicare.csv", chunksize=100000, low_memory=False
     chunk.to_sql('medicare_payments', conn, if_exists='append', index=False)
 
 # Create indexes for faster querying
+cursor.execute("CREATE INDEX idx_npi ON medicare_payments(npi)")
 cursor.execute("CREATE INDEX idx_hcpcs ON medicare_payments(hcpcs_code)")
 cursor.execute("CREATE INDEX idx_state ON medicare_payments(provider_state)")
 cursor.execute("CREATE INDEX idx_type ON medicare_payments(provider_type)")
